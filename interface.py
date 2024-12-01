@@ -1,189 +1,133 @@
-import sys
-import cv2
-import queue
+import tkinter as tk
+from tkinter import filedialog
+from PIL import Image, ImageTk
 import threading
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QWidget
-from PyQt5.QtGui import QPixmap, QImage
-from PyQt5.QtCore import Qt, QTimer
-import module_static_object_multi 
-#Интерфейс
-class VideoDisplayWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("RoboSight Video Display")
-        self.setGeometry(0, 0, 800, 600)
+import cv2
+from ultralytics import YOLO
+import random
+from terrain_module import RealTimeVideoProcessor 
+import torch
+from torchvision.models.segmentation import deeplabv3_mobilenet_v3_large
+from module_mobile_object import VideoProcessor, DetectionMerger
+import static_object_detection  # Импорт для обработки статичных объектов
 
-        self.detection_queue = queue.Queue(maxsize=10)  # Очередь для кадров видео
-        self.processing_video = False  # Флаг для обработки видео
-        self.video_thread = None  # Поток для обработки видео
+class VideoApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Видеообработка с YOLO")
+        self.root.geometry("1000x600")
 
-        # Разворачиваем окно на весь экран, но панель задач не скрывается
-        self.showMaximized()
+        # Создаем фреймы для разделения интерфейса
+        self.left_frame = tk.Frame(root, width=200, height=600, bg="lightgrey")
+        self.left_frame.pack(side=tk.LEFT, fill=tk.Y)
 
-        # Стили для темной темы
-        self.setStyleSheet("""
-            QMainWindow {
-                background-color: #2E2E2E;
-            }
-            QLabel {
-                color: white;
-                font-size: 18px;
-                font-weight: bold;
-            }
-            QPushButton {
-                background-color: #444;
-                color: white;
-                font-size: 16px;
-                padding: 10px;
-                border: 1px solid #555;
-                border-radius: 5px;
-            }
-            QPushButton:hover {
-                background-color: #666;
-            }
-        """)
+        self.right_frame = tk.Frame(root, width=800, height=600)
+        self.right_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        # Лейауты
-        self.main_layout = QHBoxLayout()
-        self.left_layout = QVBoxLayout()
-        self.right_layout = QVBoxLayout()
+        # Кнопки управления слева
+        self.mobile_button = tk.Button(self.left_frame, text="Мобильные объекты", command=self.select_mobile_video, 
+                                       font=("Arial", 14), bg="blue", fg="white")
+        self.mobile_button.pack(padx=20, pady=50)
 
-        # Надпись RoboSight
-        self.title_label = QLabel("RoboSight")
-        self.title_label.setAlignment(Qt.AlignCenter)
+        self.static_button = tk.Button(self.left_frame, text="Статичные объекты", command=self.select_static_video, 
+                                       font=("Arial", 14), bg="green", fg="white")
+        self.static_button.pack(padx=20, pady=10)
 
-        self.left_layout.addWidget(self.title_label)
+        self.terrain_button = tk.Button(self.left_frame, text="Распознание рельефа", command=self.select_terrain_video, font=("Arial", 14), bg="orange", fg="white")
+        self.terrain_button.pack(padx=20, pady=10)
 
-        # Кнопка для начала распознавания
-        self.static_objects_btn = QPushButton("Распознавание неподвижных объектов")
-        self.left_layout.addWidget(self.static_objects_btn)
-        self.static_objects_btn.clicked.connect(self.run_static_objects_detection)
+        self.exit_button = tk.Button(self.left_frame, text="Выход", command=root.destroy, 
+                                     font=("Arial", 14), bg="red", fg="white")
+        self.exit_button.pack(side=tk.BOTTOM, padx=20, pady=10)
 
-        # Кнопка для остановки распознавания
-        self.stop_btn = QPushButton("Остановить распознавание")
-        self.left_layout.addWidget(self.stop_btn)
-        self.stop_btn.setEnabled(False)
-        self.stop_btn.clicked.connect(self.stop_video_processing)
+        # Холст для отображения видео
+        self.canvas = tk.Canvas(self.right_frame, bg="black")
+        self.canvas.pack(fill=tk.BOTH, expand=True)
 
-        # Кнопки для других действий
-        self.dynamic_objects_btn = QPushButton("Распознавание мобильных объектов")
-        self.terrain_btn = QPushButton("Распознавание рельефа")
+        # Настройка моделей
+        self.models = [
+            YOLO('D:/USER/Desktop/studies/python/main/temp/fox.pt'),
+            YOLO('D:/USER/Desktop/studies/python/main/temp/people.pt'),
+            YOLO('D:/USER/Desktop/studies/python/main/temp/rabbit.pt')
+        ]
+        for model in self.models:
+            model.fuse()
 
-        # Стили кнопок
-        self.dynamic_objects_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #444; 
-                color: white; 
-                font-size: 16px; 
-                padding: 10px;
-                border: 1px solid #555;
-                border-radius: 5px;
-            }
-            QPushButton:hover {
-                background-color: #666;
-            }
-        """)
-        self.terrain_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #444; 
-                color: white; 
-                font-size: 16px; 
-                padding: 10px;
-                border: 1px solid #555;
-                border-radius: 5px;
-            }
-            QPushButton:hover {
-                background-color: #666;
-            }
-        """)
+        self.merger = DetectionMerger(iou_threshold=0.5)
+        self.video_processor = VideoProcessor(self.models, self.merger, show_video=False, save_video=False)
 
-        self.left_layout.addWidget(self.dynamic_objects_btn)
-        self.left_layout.addWidget(self.terrain_btn)
-        self.left_layout.addStretch()
+        self.running = False
 
-        # Подключение кнопок
-        self.dynamic_objects_btn.clicked.connect(lambda: self.update_main_view("dynamic"))
-        self.terrain_btn.clicked.connect(lambda: self.update_main_view("terrain"))
+        # Инициализация модели DeeplabV3 для рельефа
+        self.terrain_model = deeplabv3_mobilenet_v3_large(num_classes=7)
+        self.terrain_model.load_state_dict(torch.load("D:/USER/Desktop/studies/python/main/temp/model_win_10.pth", map_location=torch.device('cpu')))
+        self.terrain_model.eval()
+        self.terrain_processor = RealTimeVideoProcessor(self.terrain_model)
+    
+    def select_terrain_video(self):
+        video_path = filedialog.askopenfilename(title="Выберите видео для распознавания рельефа", filetypes=[("Видео файлы", "*.mp4 *.avi")])
+        if video_path:
+            threading.Thread(target=self.terrain_processor.start_video_stream, args=(video_path, self.canvas, self.root)).start()
 
-        # Виджет для отображения видео
-        self.video_label = QLabel(self)
-        self.right_layout.addWidget(self.video_label)
+    def select_mobile_video(self):
+        video_path = filedialog.askopenfilename(title="Выберите видео для мобильных объектов", 
+                                                filetypes=[("Видео файлы", "*.mp4 *.avi")])
+        if video_path:
+            self.running = True
+            threading.Thread(target=self.process_mobile_video, args=(video_path,)).start()
 
-        # Установка лейаутов
-        self.main_layout.addLayout(self.left_layout, 1)
-        self.main_layout.addLayout(self.right_layout, 2)
-        container = QWidget()
-        container.setLayout(self.main_layout)
-        self.setCentralWidget(container)
+    def select_static_video(self):
+        video_path = filedialog.askopenfilename(title="Выберите видео для статичных объектов", 
+                                                filetypes=[("Видео файлы", "*.mp4 *.avi")])
+        if video_path:
+            self.running = True
+            threading.Thread(target=self.process_static_video, args=(video_path,)).start()
 
-        # Таймер для обновления кадров
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.update_frame)
+    def process_mobile_video(self, video_path):
+        """Обработка мобильных объектов."""
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            raise Exception("Error: Could not open video file.")
 
-    def run_static_objects_detection(self):
-        """Запуск программы для распознавания неподвижных объектов."""
-        if self.processing_video:
-            return  # Если видео уже обрабатывается, не запускаем снова
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
 
-        input_video_path = "D:/USER/Desktop/studies/python/main/tree1v.mp4"  # Путь к видео
+            all_detections = []
+            for model in self.models:
+                results = model.track(frame, iou=0.4, conf=0.5, persist=True, imgsz=608, verbose=False)
+                if results[0].boxes.id is not None:
+                    boxes = results[0].boxes.xyxy.cpu().numpy().astype(int)
+                    scores = results[0].boxes.conf.cpu().numpy()
+                    ids = results[0].boxes.id.cpu().numpy().astype(int)
+                    for box, score, id in zip(boxes, scores, ids):
+                        x1, y1, x2, y2 = box
+                        all_detections.append([x1, y1, x2, y2, score, id])
+            merged_detections = self.merger.merge_detections(all_detections)
+            for detection in merged_detections:
+                x1, y1, x2, y2, score, obj_id = detection
+                color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+                cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+                cv2.putText(frame, f"Id {obj_id} | Conf: {score:.2f}", (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
-        self.processing_video = True
-        self.timer.stop()
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame_resized = cv2.resize(frame, (self.canvas.winfo_width(), self.canvas.winfo_height()))
+            img = ImageTk.PhotoImage(image=Image.fromarray(frame_resized))
+            self.canvas.create_image(0, 0, anchor=tk.NW, image=img)
+            self.canvas.image = img
 
-        # Запуск обработки видео в отдельном потоке
-        self.video_thread = threading.Thread(target=self.start_video_processing, args=(input_video_path,))
-        self.video_thread.start()
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
 
-        # Запуск таймера для обновления кадров
-        self.timer.start(30)
+        cap.release()
 
-        # Ожидаем завершения распознавания
-        self.stop_btn.setEnabled(True)
-        self.static_objects_btn.setEnabled(False)
-
-    def start_video_processing(self, input_video_path):
-        """Обработка видео."""
-        module_static_object_multi.start_video_processing(input_video_path, self.detection_queue)
-
-    def stop_video_processing(self):
-        """Остановка алгоритма распознавания."""
-        self.processing_video = False
-        self.timer.stop()
-        if self.video_thread is not None and self.video_thread.is_alive():
-            self.video_thread.join()
-        self.stop_btn.setEnabled(False)
-        self.static_objects_btn.setEnabled(True)
-
-    def update_frame(self):
-        """Обновление видео."""
-        if self.processing_video and not self.detection_queue.empty():
-            frame = self.detection_queue.get()
-
-            # Преобразование изображения из OpenCV в формат для QLabel
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            h, w, ch = rgb_frame.shape
-            bytes_per_line = ch * w
-            qimg = QImage(rgb_frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
-            pixmap = QPixmap.fromImage(qimg)
-
-            self.video_label.setPixmap(pixmap.scaled(self.video_label.size(), Qt.KeepAspectRatio))
-
-    def update_main_view(self, view_type):
-        """Обновление вида в зависимости от типа действия."""
-        if view_type == "dynamic":
-            self.video_label.setText("Распознавание мобильных объектов")
-        elif view_type == "terrain":
-            self.video_label.setText("Распознавание рельефа")
-
-    def closeEvent(self, event):
-        """При закрытии окна останавливаем видео обработку."""
-        if self.processing_video:
-            self.stop_video_processing()  # Остановка видео
-        event.accept()  # Принять событие закрытия окна
+    def process_static_video(self, video_path):
+        """Обработка статичных объектов через static_object_detection."""
+        static_object_detection.start_static_object_detection(video_path, self.canvas, self.root)
 
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = VideoDisplayWindow()
-    window.showMaximized()  # Окно разворачивается на весь экран, панель задач остается видимой
-    sys.exit(app.exec_())
+    root = tk.Tk()
+    app = VideoApp(root)
+    root.mainloop()
