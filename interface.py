@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QVBo
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import Qt, QTimer
 import module_static_object_multi 
-
+#Интерфейс
 class VideoDisplayWindow(QMainWindow):
     def __init__(self):
         super().__init__()
