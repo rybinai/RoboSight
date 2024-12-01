@@ -3,6 +3,7 @@ import torch
 from torchvision.transforms import ToTensor, Resize, Normalize
 import numpy as np
 from PIL import Image, ImageTk
+from torchvision.models.segmentation import deeplabv3_mobilenet_v3_large
 
 class RealTimeVideoProcessor:
     def __init__(self, model, target_size=(512, 512)):
@@ -61,3 +62,18 @@ class RealTimeVideoProcessor:
             return
 
         self.update_frame(cap, canvas, root)
+
+class TerrainModelLoader:
+    def __init__(self):
+        # Загружаем модель и инициализируем процессор видео
+        self.model = deeplabv3_mobilenet_v3_large(num_classes=7)
+        self.model.load_state_dict(torch.load("C:/prog/RoboSight-main (1)/RoboSight-main/model_win_10.pth", map_location=torch.device('cpu')))
+        self.model.eval()
+        
+        # Инициализация обработчика видео
+        self.video_processor = RealTimeVideoProcessor(self.model)
+
+    def get_video_processor(self):
+        # Возвращаем обработчик видео
+        return self.video_processor
+

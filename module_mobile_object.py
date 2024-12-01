@@ -90,3 +90,15 @@ class VideoProcessor:
                 break
 
         cap.release()
+
+def load_mobile_models():
+    models = [
+        YOLO('C:/prog/RoboSight-main (1)/RoboSight-main/fox.pt'),
+        YOLO('C:/prog/RoboSight-main (1)/RoboSight-main/people.pt'),
+        YOLO('C:/prog/RoboSight-main (1)/RoboSight-main/rabbit.pt')
+    ]
+    for model in models:
+        model.fuse()
+    merger = DetectionMerger(iou_threshold=0.5)
+    video_processor = VideoProcessor(models, merger, show_video=False, save_video=False)
+    return video_processor, merger
