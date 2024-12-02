@@ -1,0 +1,10 @@
+tkinter
+Pillow
+threading
+opencv-python
+random
+torch
+torchvision
+numpy
+math
+ultralytics
