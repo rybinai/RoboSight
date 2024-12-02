@@ -2,7 +2,6 @@ import cv2
 import random
 import threading
 from PIL import Image, ImageTk
-import math
 from ultralytics import YOLO
 
 class ObjectDetectionProcessor:
@@ -65,11 +64,8 @@ class ObjectDetectionProcessor:
 
                 for box, conf in zip(boxes, confidences):
                     object_label = f"{label}"
-                    # Добавление информации о размере объекта и расстоянии
                     size = self._calculate_size(box)
-                    distance = self._calculate_distance(size)
-
-                    all_detections.append((box, object_label, conf, size, distance))
+                    all_detections.append((box, object_label, conf, size))
 
         return all_detections
 
@@ -80,19 +76,9 @@ class ObjectDetectionProcessor:
         size = width * height  # Площадь объекта в пикселях
         return size
 
-    def _calculate_distance(self, size):
-        """Приближенное вычисление расстояния до объекта на основе его размера."""
-        # Пример: чем больше объект, тем ближе он находится.
-        # В реальном проекте нужно использовать реальные данные (фокусное расстояние камеры, реальный размер объекта)
-        # Для примера мы используем гипотетическую зависимость.
-        focal_length = 1000  # Фокусное расстояние камеры (условная величина)
-        real_object_size = 100  # Реальный размер объекта (условная величина, например, 100 см)
-        distance = (focal_length * real_object_size) / math.sqrt(size)  # Приближенная формула
-        return distance
-
     def _draw_detections(self, frame, detections):
         """Отрисовка всех детекций на кадре."""
-        for box, object_label, conf, size, distance in detections:
+        for box, object_label, conf, size in detections:
             random.seed(hash(object_label))
             color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
@@ -101,10 +87,10 @@ class ObjectDetectionProcessor:
             center_x = (box[0] + box[2]) // 2
             center_y = (box[1] + box[3]) // 2
 
-            # Отображение метки, размера и расстояния
+            # Отображение метки и размера
             cv2.putText(
                 frame,
-                f"{object_label} | {conf:.2f} | Size: {size} px | Distance: {distance:.2f} m",
+                f"{object_label} | {conf:.2f} | Size: {size} px",
                 (center_x, center_y),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
@@ -126,9 +112,9 @@ class ObjectDetectionProcessor:
 
 def start_static_object_detection(input_video_path, canvas, root):
     models = [
-        YOLO('D:/USER/Desktop/studies/python/main/tree.pt'),
-        YOLO('D:/USER/Desktop/studies/python/main/stone.pt'),
-        YOLO('D:/USER/Desktop/studies/python/main/bush.pt')
+        YOLO('D:/USER/Desktop/studies/python/main/RoboSight/tree.pt'),
+        YOLO('D:/USER/Desktop/studies/python/main/RoboSight/stone.pt'),
+        YOLO('D:/USER/Desktop/studies/python/main/RoboSight/bush.pt')
     ]
     labels = ["tree", "stone", "bush"]
 

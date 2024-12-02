@@ -14,25 +14,33 @@ class VideoApp:
         self.root.title("Видеообработка")
         self.root.geometry("1000x600")
 
+        # Темный фон для окна
+        self.root.config(bg="#2E2E2E")
+
         # Создаем фреймы для разделения интерфейса
-        self.left_frame = tk.Frame(root, width=200, height=600, bg="lightgrey")
+        self.left_frame = tk.Frame(root, width=200, height=600, bg="#2E2E2E")  # Темный фон для левого фрейма
         self.left_frame.pack(side=tk.LEFT, fill=tk.Y)
-        self.right_frame = tk.Frame(root, width=800, height=600)
+
+        self.right_frame = tk.Frame(root, width=800, height=600, bg="black")  # Темный фон для правого фрейма
         self.right_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # Кнопки управления
-        self.mobile_button = tk.Button(self.left_frame, text="Мобильные объекты", command=self.select_mobile_video, font=("Arial", 14), bg="blue", fg="white")
-        self.mobile_button.pack(padx=20, pady=50)
+        button_width = 20  # Устанавливаем ширину кнопок
+        button_height = 2  # Устанавливаем высоту кнопок
 
-        self.static_button = tk.Button(self.left_frame, text="Статичные объекты", command=self.select_static_video, font=("Arial", 14), bg="green", fg="white")
-        self.static_button.pack(padx=20, pady=10)
+        self.mobile_button = tk.Button(self.left_frame, text="Мобильные объекты", command=self.select_mobile_video, font=("Arial", 14), bg="grey", fg="white", width=button_width, height=button_height)
+        self.mobile_button.pack(side=tk.TOP, padx=20, pady=20)
 
-        self.terrain_button = tk.Button(self.left_frame, text="Распознание рельефа", command=self.select_terrain_video, font=("Arial", 14), bg="orange", fg="white")
-        self.terrain_button.pack(padx=20, pady=10)
+        self.static_button = tk.Button(self.left_frame, text="Статичные объекты", command=self.select_static_video, font=("Arial", 14), bg="grey", fg="white", width=button_width, height=button_height)
+        self.static_button.pack(side=tk.TOP, padx=20, pady=10)
 
-        self.exit_button = tk.Button(self.left_frame, text="Выход", command=root.destroy, font=("Arial", 14), bg="red", fg="white")
+        self.terrain_button = tk.Button(self.left_frame, text="Распознание рельефа", command=self.select_terrain_video, font=("Arial", 14), bg="grey", fg="white", width=button_width, height=button_height)
+        self.terrain_button.pack(side=tk.TOP, padx=20, pady=10)
+
+        self.exit_button = tk.Button(self.left_frame, text="Выход", command=root.destroy, font=("Arial", 14), bg="grey", fg="white", width=button_width, height=button_height)
         self.exit_button.pack(side=tk.BOTTOM, padx=20, pady=10)
 
+        # Холст для отображения видео
         self.canvas = tk.Canvas(self.right_frame, bg="black")
         self.canvas.pack(fill=tk.BOTH, expand=True)
 
@@ -65,14 +73,12 @@ class VideoApp:
         video_processor, merger = load_mobile_models()
         video_processor.process_video(video_path, self.canvas, self.root)
 
-
     def select_static_video(self):
         video_path = filedialog.askopenfilename(title="Выберите видео для статичных объектов", 
                                                 filetypes=[("Видео файлы", "*.mp4 *.avi")])
         if video_path:
             self.running = True
             threading.Thread(target=self.process_static_video, args=(video_path,)).start()
-
 
     def process_static_video(self, video_path):
         """Обработка статичных объектов через static_object_detection."""

@@ -67,7 +67,7 @@ class TerrainModelLoader:
     def __init__(self):
         # Загружаем модель и инициализируем процессор видео
         self.model = deeplabv3_mobilenet_v3_large(num_classes=7)
-        self.model.load_state_dict(torch.load("C:/prog/RoboSight-main (1)/RoboSight-main/model_win_10.pth", map_location=torch.device('cpu')))
+        self.model.load_state_dict(torch.load("D:/USER/Desktop/studies/python/main/RoboSight/model_win_10.pth", map_location=torch.device('cpu')))
         self.model.eval()
         
         # Инициализация обработчика видео

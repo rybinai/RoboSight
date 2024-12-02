@@ -93,9 +93,9 @@ class VideoProcessor:
 
 def load_mobile_models():
     models = [
-        YOLO('C:/prog/RoboSight-main (1)/RoboSight-main/fox.pt'),
-        YOLO('C:/prog/RoboSight-main (1)/RoboSight-main/people.pt'),
-        YOLO('C:/prog/RoboSight-main (1)/RoboSight-main/rabbit.pt')
+        YOLO('D:/USER/Desktop/studies/python/main/RoboSight/fox.pt'),
+        YOLO('D:/USER/Desktop/studies/python/main/RoboSight/people.pt'),
+        YOLO('D:/USER/Desktop/studies/python/main/RoboSight/rabbit.pt')
     ]
     for model in models:
         model.fuse()
