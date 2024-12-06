@@ -6,6 +6,7 @@ import numpy as np
 from PIL import Image, ImageTk
 import threading
 import tkinter as tk
+from pathlib import Path
 
 class DetectionMerger:
     def __init__(self, iou_threshold=0.5):
@@ -92,11 +93,18 @@ class VideoProcessor:
         cap.release()
 
 def load_mobile_models():
-    models = [
-        YOLO('D:/USER/Desktop/studies/python/main/RoboSight/fox.pt'),
-        YOLO('D:/USER/Desktop/studies/python/main/RoboSight/people.pt'),
-        YOLO('D:/USER/Desktop/studies/python/main/RoboSight/rabbit.pt')
+    # Корневая директория проекта
+    project_root = Path(__file__).parent.resolve()
+    
+    # Пути к файлам моделей
+    model_paths = [
+        project_root / "fox.pt",
+        project_root / "people.pt",
+        project_root / "rabbit.pt"
     ]
+    
+    # Загружаем модели
+    models = [YOLO(str(path)) for path in model_paths]
     for model in models:
         model.fuse()
     merger = DetectionMerger(iou_threshold=0.5)

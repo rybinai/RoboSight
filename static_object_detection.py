@@ -3,6 +3,7 @@ import random
 import threading
 from PIL import Image, ImageTk
 from ultralytics import YOLO
+from pathlib import Path
 
 class ObjectDetectionProcessor:
     def __init__(self, models, labels, input_video_path, canvas, root):
@@ -110,11 +111,18 @@ class ObjectDetectionProcessor:
         cv2.destroyAllWindows()
 
 def start_static_object_detection(input_video_path, canvas, root):
-    models = [
-        YOLO('D:/USER/Desktop/studies/python/main/RoboSight/tree.pt', verbose=False),
-        YOLO('D:/USER/Desktop/studies/python/main/RoboSight/stone.pt', verbose=False),
-        YOLO('D:/USER/Desktop/studies/python/main/RoboSight/bush.pt', verbose=False)
+    # Корневая директория проекта
+    project_root = Path(__file__).parent.resolve()
+    
+    # Пути к файлам моделей
+    model_paths = [
+        project_root / "tree.pt",
+        project_root / "stone.pt",
+        project_root / "bush.pt"
     ]
+    
+    # Загружаем модели
+    models = [YOLO(str(path)) for path in model_paths]
     labels = ["tree", "stone", "bush"]
 
     for model in models:
