@@ -2,7 +2,6 @@ import cv2
 import random
 import threading
 from PIL import Image, ImageTk
-import math
 from ultralytics import YOLO
 
 class ObjectDetectionProcessor:
@@ -22,7 +21,7 @@ class ObjectDetectionProcessor:
         self.frame_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
     def process_video(self):
-        """Обработка видео с использованием моделей и вывод на экран."""
+        # Обработка видео с использованием моделей и вывод на экран.
         while True:
             ret, frame = self.cap.read()
             if not ret:
@@ -54,7 +53,7 @@ class ObjectDetectionProcessor:
         self._release_resources()
 
     def _process_frame(self, frame):
-        """Обработка одного кадра и получение всех детекций."""
+        # Обработка одного кадра и получение всех детекций.
         all_detections = []
         for model, label in zip(self.models, self.labels):
             results = model(frame)  # Использование модели для детекции объектов
@@ -65,34 +64,21 @@ class ObjectDetectionProcessor:
 
                 for box, conf in zip(boxes, confidences):
                     object_label = f"{label}"
-                    # Добавление информации о размере объекта и расстоянии
                     size = self._calculate_size(box)
-                    distance = self._calculate_distance(size)
-
-                    all_detections.append((box, object_label, conf, size, distance))
+                    all_detections.append((box, object_label, conf, size))
 
         return all_detections
 
     def _calculate_size(self, box):
-        """Вычисление размера объекта по площади бокса."""
+        # Вычисление размера объекта по площади бокса.
         width = box[2] - box[0]
         height = box[3] - box[1]
         size = width * height  # Площадь объекта в пикселях
         return size
 
-    def _calculate_distance(self, size):
-        """Приближенное вычисление расстояния до объекта на основе его размера."""
-        # Пример: чем больше объект, тем ближе он находится.
-        # В реальном проекте нужно использовать реальные данные (фокусное расстояние камеры, реальный размер объекта)
-        # Для примера мы используем гипотетическую зависимость.
-        focal_length = 1000  # Фокусное расстояние камеры (условная величина)
-        real_object_size = 100  # Реальный размер объекта (условная величина, например, 100 см)
-        distance = (focal_length * real_object_size) / math.sqrt(size)  # Приближенная формула
-        return distance
-
     def _draw_detections(self, frame, detections):
-        """Отрисовка всех детекций на кадре."""
-        for box, object_label, conf, size, distance in detections:
+        # Отрисовка всех детекций на кадре.
+        for box, object_label, conf, size in detections:
             random.seed(hash(object_label))
             color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
@@ -101,10 +87,10 @@ class ObjectDetectionProcessor:
             center_x = (box[0] + box[2]) // 2
             center_y = (box[1] + box[3]) // 2
 
-            # Отображение метки, размера и расстояния
+            # Отображение метки и размера
             cv2.putText(
                 frame,
-                f"{object_label} | {conf:.2f} | Size: {size} px | Distance: {distance:.2f} m",
+                f"{object_label} | {conf:.2f} | Size: {size} px",
                 (center_x, center_y),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
@@ -113,22 +99,21 @@ class ObjectDetectionProcessor:
             )
 
     def update_canvas(self, img):
-        """Обновление изображения на холсте Tkinter"""
+        # Обновление изображения на холсте Tkinter.
         self.img_tk = img
         self.canvas.create_image(0, 0, anchor="nw", image=self.img_tk)
         self.root.update_idletasks()
 
     def _release_resources(self):
-        """Освобождение ресурсов."""
+        # Освобождение ресурсов.
         self.cap.release()
         cv2.destroyAllWindows()
 
-
 def start_static_object_detection(input_video_path, canvas, root):
     models = [
-        YOLO('D:/USER/Desktop/studies/python/main/tree.pt'),
-        YOLO('D:/USER/Desktop/studies/python/main/stone.pt'),
-        YOLO('D:/USER/Desktop/studies/python/main/bush.pt')
+        YOLO('D:/USER/Desktop/studies/python/main/RoboSight/tree.pt', verbose=False),
+        YOLO('D:/USER/Desktop/studies/python/main/RoboSight/stone.pt', verbose=False),
+        YOLO('D:/USER/Desktop/studies/python/main/RoboSight/bush.pt', verbose=False)
     ]
     labels = ["tree", "stone", "bush"]
 
