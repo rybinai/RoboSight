@@ -21,7 +21,7 @@ class ObjectDetectionProcessor:
         self.frame_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
     def process_video(self):
-        """Обработка видео с использованием моделей и вывод на экран."""
+        # Обработка видео с использованием моделей и вывод на экран.
         while True:
             ret, frame = self.cap.read()
             if not ret:
@@ -53,7 +53,7 @@ class ObjectDetectionProcessor:
         self._release_resources()
 
     def _process_frame(self, frame):
-        """Обработка одного кадра и получение всех детекций."""
+        # Обработка одного кадра и получение всех детекций.
         all_detections = []
         for model, label in zip(self.models, self.labels):
             results = model(frame)  # Использование модели для детекции объектов
@@ -70,14 +70,14 @@ class ObjectDetectionProcessor:
         return all_detections
 
     def _calculate_size(self, box):
-        """Вычисление размера объекта по площади бокса."""
+        # Вычисление размера объекта по площади бокса.
         width = box[2] - box[0]
         height = box[3] - box[1]
         size = width * height  # Площадь объекта в пикселях
         return size
 
     def _draw_detections(self, frame, detections):
-        """Отрисовка всех детекций на кадре."""
+        # Отрисовка всех детекций на кадре.
         for box, object_label, conf, size in detections:
             random.seed(hash(object_label))
             color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
@@ -99,22 +99,21 @@ class ObjectDetectionProcessor:
             )
 
     def update_canvas(self, img):
-        """Обновление изображения на холсте Tkinter"""
+        # Обновление изображения на холсте Tkinter.
         self.img_tk = img
         self.canvas.create_image(0, 0, anchor="nw", image=self.img_tk)
         self.root.update_idletasks()
 
     def _release_resources(self):
-        """Освобождение ресурсов."""
+        # Освобождение ресурсов.
         self.cap.release()
         cv2.destroyAllWindows()
 
-
 def start_static_object_detection(input_video_path, canvas, root):
     models = [
-        YOLO('D:/USER/Desktop/studies/python/main/RoboSight/tree.pt'),
-        YOLO('D:/USER/Desktop/studies/python/main/RoboSight/stone.pt'),
-        YOLO('D:/USER/Desktop/studies/python/main/RoboSight/bush.pt')
+        YOLO('D:/USER/Desktop/studies/python/main/RoboSight/tree.pt', verbose=False),
+        YOLO('D:/USER/Desktop/studies/python/main/RoboSight/stone.pt', verbose=False),
+        YOLO('D:/USER/Desktop/studies/python/main/RoboSight/bush.pt', verbose=False)
     ]
     labels = ["tree", "stone", "bush"]
 

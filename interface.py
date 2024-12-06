@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog
 from PIL import Image, ImageTk
-import threading
+import threading    
 import cv2
 from module_mobile_object import load_mobile_models
 from terrain_module import TerrainModelLoader
@@ -11,7 +11,7 @@ class VideoApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Видеообработка")
-        self.root.geometry("1000x600")
+        self.root.geometry("270x600")
 
         # Темный фон для окна
         self.root.config(bg="#2E2E2E")
@@ -19,9 +19,6 @@ class VideoApp:
         # Создаем фреймы для разделения интерфейса
         self.left_frame = tk.Frame(root, width=200, height=600, bg="#2E2E2E")
         self.left_frame.pack(side=tk.LEFT, fill=tk.Y)
-
-        self.right_frame = tk.Frame(root, width=800, height=600, bg="black")
-        self.right_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # Кнопки управления
         button_width = 20
@@ -51,9 +48,10 @@ class VideoApp:
         )
         self.exit_button.pack(side=tk.BOTTOM, padx=20, pady=10)
 
-        # Загрузка моделей
-        self.video_processor, self.merger = load_mobile_models()
-        self.terrain_processor = TerrainModelLoader()
+        # Инициализация моделей как None (загружаются позже)
+        self.video_processor = None
+        self.merger = None
+        self.terrain_processor = None
         self.running = False
 
     def open_video_window(self, process_func, video_path):
@@ -72,7 +70,6 @@ class VideoApp:
             self.running = False
             video_window.destroy()
 
-        # Кнопка для закрытия окна
         close_button = tk.Button(
             video_window, text="Выход", command=stop_video,
             font=("Arial", 14), bg="grey", fg="white"
@@ -85,6 +82,13 @@ class VideoApp:
 
     def select_mobile_video(self):
         """Выбор видео для обработки мобильных объектов."""
+        # Загружаем модель, если она еще не загружена
+        if self.video_processor is None or self.merger is None:
+            print("Загрузка модели для мобильных объектов...")
+            self.video_processor, self.merger = load_mobile_models()
+            print("Модель успешно загружена.")
+        
+        # Открываем диалоговое окно для выбора видео
         video_path = filedialog.askopenfilename(
             title="Выберите видео для мобильных объектов",
             filetypes=[("Видео файлы", "*.mp4 *.avi")]
@@ -95,11 +99,9 @@ class VideoApp:
     def process_mobile_video(self, video_path, canvas, window):
         """Обработка мобильных объектов через module_mobile_object.py."""
         try:
-            # Открываем видео
-            cap = cv2.VideoCapture(video_path)
-            if not cap.isOpened():
-                raise Exception("Ошибка: Не удалось открыть видео.")
-
+            if self.video_processor is None:
+                raise Exception("Ошибка: Модель не загружена.")
+            
             # Используем VideoProcessor из module_mobile_object
             self.video_processor.process_video(video_path, canvas, window)
         except Exception as e:
@@ -121,6 +123,12 @@ class VideoApp:
 
     def select_terrain_video(self):
         """Выбор видео для обработки рельефа."""
+        # Загружаем модель, если она еще не загружена
+        if self.terrain_processor is None:
+            print("Загрузка модели для распознавания рельефа...")
+            self.terrain_processor = TerrainModelLoader()
+            print("Модель для рельефа успешно загружена.")
+        
         video_path = filedialog.askopenfilename(
             title="Выберите видео для распознавания рельефа",
             filetypes=[("Видео файлы", "*.mp4 *.avi")]
