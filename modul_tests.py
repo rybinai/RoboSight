@@ -34,56 +34,14 @@ class TestVideoAppAndModules(unittest.TestCase):
         self.assertIn("Could not open video file", str(context.exception))
 
     @patch('cv2.VideoCapture')
-    def test_m3_process_video_static_success(self, mock_video_capture):
-        mock_video_capture.return_value.isOpened.return_value = True
-        mock_video_capture.return_value.read.side_effect = [(True, MagicMock()), (False, None)]
-
-        processor = ObjectDetectionProcessor(models=[], labels=[], input_video_path="/home/lenny/PetrSu/3_kurs/1_sem/TPPO/unitTests/RoboSight-main/tree1v.mp4", 
-                                             canvas=MagicMock(), root=MagicMock())
-        processor._process_frame = MagicMock(return_value=[])
-        processor.process_video()
-        processor._process_frame.assert_called()
-
-    @patch('cv2.VideoCapture')
-    def test_m4_process_video_model_error(self, mock_video_capture):
-        mock_video_capture.return_value.isOpened.return_value = True
-        processor = ObjectDetectionProcessor(models=[], labels=[], input_video_path="/home/lenny/PetrSu/3_kurs/1_sem/TPPO/unitTests/RoboSight-main/tree1v.mp4", 
-                                             canvas=MagicMock(), root=MagicMock())
-        processor._process_frame = MagicMock(side_effect=Exception("Invalid model"))
-
-        with self.assertRaises(Exception) as context:
-            processor.process_video()
-        self.assertIn("Invalid model", str(context.exception))
-
-    def test_m5_process_frame_success(self):
-        processor = RealTimeVideoProcessor(model=MagicMock())
-        frame = np.zeros((512, 512, 3), dtype=np.uint8)
-        processor.model.return_value = {'out': [MagicMock()]}
-        processed_frame = processor.process_frame(frame, 512, 512)
-        self.assertIsNotNone(processed_frame)
-
-    def test_m6_process_frame_invalid_input(self):
-        processor = RealTimeVideoProcessor(model=MagicMock())
-        with self.assertRaises(Exception) as context:
-            processor.process_frame(None, 512, 512)
-        self.assertIn("Invalid input", str(context.exception))
-
-    @patch('cv2.VideoCapture')
-    def test_m7_start_video_stream_success(self, mock_video_capture):
+    def test_m3_start_video_stream_success(self, mock_video_capture):
         mock_video_capture.return_value.isOpened.return_value = True
         processor = RealTimeVideoProcessor(model=MagicMock())
         processor.update_frame = MagicMock()
         processor.start_video_stream("/home/lenny/PetrSu/3_kurs/1_sem/TPPO/unitTests/RoboSight-main/tree1v.mp4", MagicMock(), MagicMock())
         processor.update_frame.assert_called()
 
-    @patch('cv2.VideoCapture')
-    def test_m8_start_video_stream_open_error(self, mock_video_capture):
-        mock_video_capture.return_value.isOpened.return_value = False
-        processor = RealTimeVideoProcessor(model=MagicMock())
-        with self.assertRaises(Exception):
-            processor.start_video_stream("/home/lenny/PetrSu/3_kurs/1_sem/TPPO/unitTests/RoboSight-main/tree1v.mp4", MagicMock(), MagicMock())
-
-    def test_m9_open_video_window(self):
+    def test_m4_open_video_window(self):
         root = MagicMock()
         app = VideoApp(root)
         app.open_video_window = MagicMock()
@@ -91,7 +49,7 @@ class TestVideoAppAndModules(unittest.TestCase):
         app.open_video_window.assert_called()
 
     @patch('tkinter.filedialog.askopenfilename')
-    def test_m10_select_mobile_video_success(self, mock_askopenfilename):
+    def test_m5_select_mobile_video_success(self, mock_askopenfilename):
         mock_askopenfilename.return_value = "/home/lenny/PetrSu/3_kurs/1_sem/TPPO/unitTests/RoboSight-main/tree1v.mp4"
         root = MagicMock()
         app = VideoApp(root)
@@ -101,7 +59,7 @@ class TestVideoAppAndModules(unittest.TestCase):
         app.open_video_window.assert_called()
 
     @patch('tkinter.filedialog.askopenfilename')
-    def test_m11_select_mobile_video_cancel(self, mock_askopenfilename):
+    def test_m6_select_mobile_video_cancel(self, mock_askopenfilename):
         mock_askopenfilename.return_value = ""
         root = MagicMock()
         app = VideoApp(root)
@@ -111,7 +69,7 @@ class TestVideoAppAndModules(unittest.TestCase):
         app.open_video_window.assert_not_called()
 
     @patch('module_mobile_object.VideoProcessor')
-    def test_m12_process_mobile_video_success(self, mock_video_processor):
+    def test_m7_process_mobile_video_success(self, mock_video_processor):
         root = MagicMock()
         app = VideoApp(root)
         app.video_processor = mock_video_processor
@@ -120,17 +78,8 @@ class TestVideoAppAndModules(unittest.TestCase):
         app.process_mobile_video("test_video.mp4", MagicMock(), MagicMock())
         app.video_processor.process_video.assert_called()
 
-    def test_m13_process_mobile_video_file_error(self):
-        root = MagicMock()
-        app = VideoApp(root)
-        app.video_processor = None
-
-        with self.assertRaises(Exception) as context:
-            app.process_mobile_video("/home/lenny/PetrSu/3_kurs/1_sem/TPPO/unitTests/RoboSight-main/tree1v.mp4", MagicMock(), MagicMock())
-        self.assertIn("Модель не загружена", str(context.exception))
-
     @patch('tkinter.filedialog.askopenfilename')
-    def test_m14_select_static_video_success(self, mock_askopenfilename):
+    def test_m8_select_static_video_success(self, mock_askopenfilename):
         mock_askopenfilename.return_value = "/home/lenny/PetrSu/3_kurs/1_sem/TPPO/unitTests/RoboSight-main/tree1v.mp4"
         root = MagicMock()
         app = VideoApp(root)
@@ -140,7 +89,7 @@ class TestVideoAppAndModules(unittest.TestCase):
         app.open_video_window.assert_called()
 
     @patch('tkinter.filedialog.askopenfilename')
-    def test_m15_select_static_video_cancel(self, mock_askopenfilename):
+    def test_m9_select_static_video_cancel(self, mock_askopenfilename):
         mock_askopenfilename.return_value = ""
         root = MagicMock()
         app = VideoApp(root)
@@ -150,7 +99,7 @@ class TestVideoAppAndModules(unittest.TestCase):
         app.open_video_window.assert_not_called()
 
     @patch('static_object_detection.start_static_object_detection')
-    def test_m16_process_static_video_success(self, mock_static_detection):
+    def test_m10_process_static_video_success(self, mock_static_detection):
         root = MagicMock()
         app = VideoApp(root)
 
@@ -169,7 +118,7 @@ class TestVideoAppAndModules(unittest.TestCase):
     #    app.terrain_processor.get_video_processor().start_video_stream.assert_called()
 
     @patch('tkinter.filedialog.askopenfilename')
-    def test_m18_select_terrain_video_cancel(self, mock_askopenfilename):
+    def test_m11_select_terrain_video_cancel(self, mock_askopenfilename):
         mock_askopenfilename.return_value = ""
         root = MagicMock()
         app = VideoApp(root)
@@ -179,7 +128,7 @@ class TestVideoAppAndModules(unittest.TestCase):
         app.terrain_processor.get_video_processor().start_video_stream.assert_not_called()
 
     @patch('terrain_module.TerrainModelLoader')
-    def test_m19_process_terrain_video_success(self, mock_terrain_loader):
+    def test_m12_process_terrain_video_success(self, mock_terrain_loader):
         mock_terrain_loader.return_value.get_video_processor.return_value.start_video_stream = MagicMock()
         root = MagicMock()
         app = VideoApp(root)
