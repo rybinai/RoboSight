@@ -98,9 +98,9 @@ def load_mobile_models():
     
     # Пути к файлам моделей
     model_paths = [
-        project_root / "fox.pt",
-        project_root / "people.pt",
-        project_root / "rabbit.pt"
+        project_root / "models" / "mobile_models" / "fox.pt",
+        project_root / "models" / "mobile_models" / "people.pt",
+        project_root / "models" / "mobile_models" / "rabbit.pt"
     ]
     
     # Загружаем модели

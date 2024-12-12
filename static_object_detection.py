@@ -116,9 +116,9 @@ def start_static_object_detection(input_video_path, canvas, root):
     
     # Пути к файлам моделей
     model_paths = [
-        project_root / "tree.pt",
-        project_root / "stone.pt",
-        project_root / "bush.pt"
+        project_root / "models" / "static_models" / "tree.pt",
+        project_root / "models" / "static_models" / "stone.pt",
+        project_root / "models" / "static_models" / "bush.pt"
     ]
     
     # Загружаем модели

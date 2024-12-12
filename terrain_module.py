@@ -70,7 +70,7 @@ class TerrainModelLoader:
         project_root = Path(__file__).parent.resolve()
         
         # Пути к модели
-        model_path = project_root / "model_win_10.pth"
+        model_path = project_root / "models" / "terrain_model" / "terrain.pth"
         
         # Загружаем модель
         self.model = deeplabv3_mobilenet_v3_large(num_classes=7)
