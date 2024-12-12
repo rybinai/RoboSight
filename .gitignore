@@ -8,7 +8,7 @@
 .LSOverride
 
 ### Pycache
-/__pycache__/
+__pycache__/
 
 ### Video
 .mp4
