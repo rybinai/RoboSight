@@ -7,9 +7,10 @@ from torchvision.models.segmentation import deeplabv3_mobilenet_v3_large
 from pathlib import Path
 
 class RealTimeVideoProcessor:
-    def __init__(self, model, target_size=(512, 512)):
+    def __init__(self, model, target_size=(512, 512), display_size=(800, 600)):
         self.model = model
-        self.target_size = target_size
+        self.target_size = target_size  # Размер для обработки
+        self.display_size = display_size  # Размер для отображения
 
     def preprocess_frame(self, frame):
         transform = Resize(self.target_size)
@@ -25,14 +26,27 @@ class RealTimeVideoProcessor:
         return cv2.resize(mask, original_size, interpolation=cv2.INTER_NEAREST)
 
     def process_frame(self, frame, width, height):
-        # Обработка кадра с моделью
+        """Обработка кадра с моделью."""
         input_tensor = self.preprocess_frame(frame)
         with torch.no_grad():
             output = self.model(input_tensor)['out'][0]
             output = torch.argmax(output, dim=0).cpu().numpy()
 
-        palette = np.random.randint(0, 255, size=(7, 3), dtype=np.uint8)  # Палитра для 7 классов
-        color_mask = self.apply_colormap(output, palette)
+        # палитра цветов
+        palette = {
+            0: (0, 255, 255),    # Urban land
+            1: (255, 255, 0),    # Agriculture land
+            2: (255, 0, 255),    # Rangeland
+            3: (0, 255, 0),      # Forest land
+            4: (255, 0, 64),     # Water (unknown)
+            5: (255, 255, 255),  # Barren land
+            6: (0, 0, 0)         # Unknown
+        }
+
+        color_mask = np.zeros((output.shape[0], output.shape[1], 3), dtype=np.uint8)
+        for class_idx, color in palette.items():
+            color_mask[output == class_idx] = color
+
         segmented_mask = self.postprocess_mask(color_mask, (width, height))
         overlay = cv2.addWeighted(frame, 0.7, segmented_mask, 0.3, 0)
 
@@ -41,19 +55,25 @@ class RealTimeVideoProcessor:
     def update_frame(self, cap, canvas, root):
         ret, frame = cap.read()
         if ret:
+            # Приведение кадра к размеру для обработки
+            standardized_size = self.target_size
+            frame = cv2.resize(frame, standardized_size, interpolation=cv2.INTER_AREA)
+
             # Обработка кадра
-            height, width, _ = frame.shape
+            height, width = standardized_size
             processed_frame = self.process_frame(frame, width, height)
 
+            # Приведение кадра к размеру для отображения
+            display_frame = cv2.resize(processed_frame, self.display_size, interpolation=cv2.INTER_AREA)
+
             # Конвертация в изображение для Tkinter
-            img = Image.fromarray(cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB))
+            img = Image.fromarray(cv2.cvtColor(display_frame, cv2.COLOR_BGR2RGB))
             img_tk = ImageTk.PhotoImage(img)
 
             # Обновление изображения на холсте
             canvas.create_image(0, 0, anchor="nw", image=img_tk)
             canvas.image = img_tk
 
-            # Продолжаем захват видео
             root.after(10, self.update_frame, cap, canvas, root)
 
     def start_video_stream(self, video_source, canvas, root):
@@ -61,6 +81,9 @@ class RealTimeVideoProcessor:
         if not cap.isOpened():
             print("Ошибка при открытии видео потока")
             return
+
+        # Размеры холста для отображения
+        canvas.config(width=self.display_size[0], height=self.display_size[1])
 
         self.update_frame(cap, canvas, root)
 
@@ -83,4 +106,3 @@ class TerrainModelLoader:
     def get_video_processor(self):
         # Возвращаем обработчик видео
         return self.video_processor
-

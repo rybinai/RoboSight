@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog
 from PIL import Image, ImageTk
-import threading    
+import threading
 import cv2
 from module_mobile_object import load_mobile_models
 from terrain_module import TerrainModelLoader
@@ -11,14 +11,16 @@ class VideoApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Видеообработка")
-        self.root.geometry("270x600")
+        self.root.geometry("500x600")
 
         # Темный фон для окна
         self.root.config(bg="#2E2E2E")
 
-        # Создаем фреймы для разделения интерфейса
-        self.left_frame = tk.Frame(root, width=200, height=600, bg="#2E2E2E")
+        self.left_frame = tk.Frame(root, width=200, height=600, bg="#2E2E2E", bd=0, highlightthickness=0)
         self.left_frame.pack(side=tk.LEFT, fill=tk.Y)
+
+        self.right_frame = tk.Frame(root, width=200, height=600, bg="#2E2E2E", bd=0, highlightthickness=0)
+        self.right_frame.pack(side=tk.RIGHT, fill=tk.Y)
 
         # Кнопки управления
         button_width = 20
@@ -37,22 +39,52 @@ class VideoApp:
         self.static_button.pack(side=tk.TOP, padx=20, pady=10)
 
         self.terrain_button = tk.Button(
-            self.left_frame, text="Распознание рельефа", command=self.select_terrain_video,
+            self.left_frame, text="Распознание рельефа и типа поверхности", command=self.select_terrain_video,
             font=("Arial", 14), bg="grey", fg="white", width=button_width, height=button_height
         )
         self.terrain_button.pack(side=tk.TOP, padx=20, pady=10)
 
-        self.exit_button = tk.Button(
-            self.left_frame, text="Выход", command=root.destroy,
-            font=("Arial", 14), bg="grey", fg="white", width=button_width, height=button_height
-        )
-        self.exit_button.pack(side=tk.BOTTOM, padx=20, pady=10)
-
-        # Инициализация моделей как None (загружаются позже)
         self.video_processor = None
         self.merger = None
         self.terrain_processor = None
         self.running = False
+
+        # Карта классов и цветов
+        self.class_map = {
+            (0, 255, 255): "Городская местность",
+            (255, 255, 0): "Сельхоз местность",
+            (255, 0, 255): "Пастбище",
+            (0, 255, 0): "Лес",
+            (255, 255, 255): "Бесплодная земля",
+            (146, 142, 250): "Неизвестная местность"
+        }
+
+        self.create_palette()
+
+    def create_palette(self):
+        """Создает палитру цветов с названиями классов."""
+        tk.Label(
+            self.right_frame, text="Палитра классов", font=("Arial", 16), bg="#2E2E2E", fg="white"
+        ).pack(pady=10)
+
+        for color, label in self.class_map.items():
+            frame = tk.Frame(self.right_frame, bg="#2E2E2E")
+            frame.pack(fill=tk.X, pady=5)
+
+            color_box = tk.Label(
+                frame, bg=self.rgb_to_hex(color), width=2, height=1
+            )
+            color_box.pack(side=tk.LEFT, padx=10)
+
+            text_label = tk.Label(
+                frame, text=label, font=("Arial", 12), bg="#2E2E2E", fg="white"
+            )
+            text_label.pack(side=tk.LEFT, padx=10)
+
+    @staticmethod
+    def rgb_to_hex(rgb):
+        """Преобразует RGB-кортеж в HEX-строку."""
+        return "#%02x%02x%02x" % rgb
 
     def open_video_window(self, process_func, video_path):
         """Открыть новое окно для видеопотока."""
@@ -62,19 +94,8 @@ class VideoApp:
         video_window.config(bg="black")
 
         # Холст для отображения видео
-        video_canvas = tk.Canvas(video_window, bg="black", width=800, height=600)
+        video_canvas = tk.Canvas(video_window, bg="black", width=800, height=600, bd=0, highlightthickness=0)
         video_canvas.pack(fill=tk.BOTH, expand=True)
-
-        # Кнопка остановки потока
-        def stop_video():
-            self.running = False
-            video_window.destroy()
-
-        close_button = tk.Button(
-            video_window, text="Выход", command=stop_video,
-            font=("Arial", 14), bg="grey", fg="white"
-        )
-        close_button.pack(side=tk.BOTTOM, pady=10)
 
         # Запуск видеопотока
         self.running = True
@@ -82,7 +103,6 @@ class VideoApp:
 
     def select_mobile_video(self):
         """Выбор видео для обработки мобильных объектов."""
-        # Загружаем модель, если она еще не загружена
         if self.video_processor is None or self.merger is None:
             print("Загрузка модели для мобильных объектов...")
             self.video_processor, self.merger = load_mobile_models()
@@ -102,7 +122,6 @@ class VideoApp:
             if self.video_processor is None:
                 raise Exception("Ошибка: Модель не загружена.")
             
-            # Используем VideoProcessor из module_mobile_object
             self.video_processor.process_video(video_path, canvas, window)
         except Exception as e:
             print(f"Ошибка обработки видео: {e}")
@@ -123,21 +142,20 @@ class VideoApp:
 
     def select_terrain_video(self):
         """Выбор видео для обработки рельефа."""
-        # Загружаем модель, если она еще не загружена
         if self.terrain_processor is None:
-            print("Загрузка модели для распознавания рельефа...")
+            print("Загрузка модели для распознавания рельефа и типа поверхности...")
             self.terrain_processor = TerrainModelLoader()
-            print("Модель для рельефа успешно загружена.")
+            print("Модель для рельефа и типа поверхности успешно загружена.")
         
         video_path = filedialog.askopenfilename(
-            title="Выберите видео для распознавания рельефа",
+            title="Выберите видео для распознавания рельефа и типа поверхности",
             filetypes=[("Видео файлы", "*.mp4 *.avi")]
         )
         if video_path:
             self.open_video_window(self.process_terrain_video, video_path)
 
     def process_terrain_video(self, video_path, canvas, window):
-        """Обработка рельефа."""
+        """Обработка рельефа и типа поверхности."""
         video_processor = self.terrain_processor.get_video_processor()
         video_processor.start_video_stream(video_path, canvas, window)
 

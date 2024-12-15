@@ -22,23 +22,22 @@ class DetectionMerger:
                 inter_y1 = max(y1, my1)
                 inter_x2 = min(x2, mx2)
                 inter_y2 = min(y2, my2)
-                inter_area = max(0, inter_x2 - inter_x1 + 1) * max(0, inter_y1 - inter_y1 + 1)
+                inter_area = max(0, inter_x2 - inter_x1 + 1) * max(0, inter_y2 - inter_y1 + 1)
 
                 box_area = (x2 - x1 + 1) * (y2 - y1 + 1)
                 merged_area = (mx2 - mx1 + 1) * (my2 - my1 + 1)
                 iou = inter_area / float(box_area + merged_area - inter_area)
 
                 if iou > self.iou_threshold:
-                    merged_boxes[i] = [
-                        min(mx1, x1), min(my1, y1), max(mx2, x2), max(my2, y2),
-                        max(mscore, score), mid, mclass_name
-                    ]
+                    if score > mscore:
+                        merged_boxes[i] = [x1, y1, x2, y2, score, obj_id, class_name]
                     add_new = False
                     break
 
             if add_new:
                 merged_boxes.append([x1, y1, x2, y2, score, obj_id, class_name])
         return merged_boxes
+
 
 class VideoProcessor:
     def __init__(self, models, merger, show_video=False, save_video=False):
@@ -53,14 +52,22 @@ class VideoProcessor:
         if not cap.isOpened():
             raise Exception("Error: Could not open video file.")
 
+        prev_frame_shape = None
+
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
 
+            # Проверка размеров кадров
+            if prev_frame_shape is not None and frame.shape[:2] != prev_frame_shape:
+                frame = cv2.resize(frame, (prev_frame_shape[1], prev_frame_shape[0]))
+            else:
+                prev_frame_shape = frame.shape[:2]
+
             all_detections = []
             for model in self.models:
-                results = model.track(frame, iou=0.4, conf=0.5, persist=True, imgsz=608, verbose=False)
+                results = model.track(frame, iou=0.4, conf=0.7, persist=True, imgsz=608, verbose=False)
                 if results[0].boxes.id is not None:
                     boxes = results[0].boxes.xyxy.cpu().numpy().astype(int)
                     scores = results[0].boxes.conf.cpu().numpy()
@@ -72,6 +79,7 @@ class VideoProcessor:
                         class_name = model.names[class_id]
                         all_detections.append([x1, y1, x2, y2, score, obj_id, class_name])
 
+
             merged_detections = self.merger.merge_detections(all_detections)
 
             for detection in merged_detections:
@@ -81,10 +89,10 @@ class VideoProcessor:
                 cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
                 cv2.putText(frame, f"Id {obj_id} | {class_name} | Conf: {score:.2f}",
                             (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-
+                
             # Конвертация кадра для tkinter
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frame = cv2.resize(frame, (800, 450))
+            frame = cv2.resize(frame, (800, 600))
             img = ImageTk.PhotoImage(image=Image.fromarray(frame))
             canvas.create_image(0, 0, anchor=tk.NW, image=img)
             canvas.image = img

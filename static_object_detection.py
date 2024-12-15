@@ -9,12 +9,13 @@ import logging
 logging.getLogger('ultralytics').setLevel(logging.WARNING)
 
 class ObjectDetectionProcessor:
-    def __init__(self, models, labels, input_video_path, canvas, root):
+    def __init__(self, models, labels, input_video_path, canvas, root, output_size=(800, 600)):
         self.models = models
         self.labels = labels
-        self.input_video_path = input_video_path  # Путь к видео
+        self.input_video_path = input_video_path
         self.canvas = canvas
         self.root = root
+        self.output_size = output_size  # Размер отображаемого видео
 
         self.cap = cv2.VideoCapture(input_video_path)
         if not self.cap.isOpened():
@@ -39,7 +40,7 @@ class ObjectDetectionProcessor:
 
             # Преобразуем кадр в RGB для Tkinter
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frame_resized = cv2.resize(frame_rgb, (800, 450))  # Устанавливаем фиксированный размер
+            frame_resized = cv2.resize(frame_rgb, self.output_size)  # Изменяем размер на указанный пользователем
 
             # Преобразуем в изображение Tkinter
             img = ImageTk.PhotoImage(image=Image.fromarray(frame_resized))
@@ -113,7 +114,7 @@ class ObjectDetectionProcessor:
         self.cap.release()
         cv2.destroyAllWindows()
 
-def start_static_object_detection(input_video_path, canvas, root):
+def start_static_object_detection(input_video_path, canvas, root, output_size=(800, 600)):
     # Корневая директория проекта
     project_root = Path(__file__).parent.resolve()
     
@@ -131,5 +132,6 @@ def start_static_object_detection(input_video_path, canvas, root):
     for model in models:
         model.fuse()
 
-    processor = ObjectDetectionProcessor(models, labels, input_video_path, canvas, root)
+    # Передаём размер вывода в объект процессора
+    processor = ObjectDetectionProcessor(models, labels, input_video_path, canvas, root, output_size)
     processor.process_video()
