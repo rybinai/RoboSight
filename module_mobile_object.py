@@ -1,4 +1,3 @@
-# detection.py
 import cv2
 from ultralytics import YOLO
 import random
@@ -15,15 +14,15 @@ class DetectionMerger:
     def merge_detections(self, detections):
         merged_boxes = []
         for detection in detections:
-            x1, y1, x2, y2, score, obj_id = detection
+            x1, y1, x2, y2, score, obj_id, class_name = detection
             add_new = True
             for i, merged_box in enumerate(merged_boxes):
-                mx1, my1, mx2, my2, mscore, mid = merged_box
+                mx1, my1, mx2, my2, mscore, mid, mclass_name = merged_box
                 inter_x1 = max(x1, mx1)
                 inter_y1 = max(y1, my1)
                 inter_x2 = min(x2, mx2)
                 inter_y2 = min(y2, my2)
-                inter_area = max(0, inter_x2 - inter_x1 + 1) * max(0, inter_y2 - inter_y1 + 1)
+                inter_area = max(0, inter_x2 - inter_x1 + 1) * max(0, inter_y1 - inter_y1 + 1)
 
                 box_area = (x2 - x1 + 1) * (y2 - y1 + 1)
                 merged_area = (mx2 - mx1 + 1) * (my2 - my1 + 1)
@@ -32,15 +31,14 @@ class DetectionMerger:
                 if iou > self.iou_threshold:
                     merged_boxes[i] = [
                         min(mx1, x1), min(my1, y1), max(mx2, x2), max(my2, y2),
-                        max(mscore, score), mid
+                        max(mscore, score), mid, mclass_name
                     ]
                     add_new = False
                     break
 
             if add_new:
-                merged_boxes.append([x1, y1, x2, y2, score, obj_id])
+                merged_boxes.append([x1, y1, x2, y2, score, obj_id, class_name])
         return merged_boxes
-
 
 class VideoProcessor:
     def __init__(self, models, merger, show_video=False, save_video=False):
@@ -67,18 +65,22 @@ class VideoProcessor:
                     boxes = results[0].boxes.xyxy.cpu().numpy().astype(int)
                     scores = results[0].boxes.conf.cpu().numpy()
                     ids = results[0].boxes.id.cpu().numpy().astype(int)
-                    for box, score, id in zip(boxes, scores, ids):
+                    class_ids = results[0].boxes.cls.cpu().numpy().astype(int)
+
+                    for box, score, obj_id, class_id in zip(boxes, scores, ids, class_ids):
                         x1, y1, x2, y2 = box
-                        all_detections.append([x1, y1, x2, y2, score, id])
+                        class_name = model.names[class_id]
+                        all_detections.append([x1, y1, x2, y2, score, obj_id, class_name])
 
             merged_detections = self.merger.merge_detections(all_detections)
 
             for detection in merged_detections:
-                x1, y1, x2, y2, score, obj_id = detection
+                x1, y1, x2, y2, score, obj_id, class_name = detection
                 random.seed(int(obj_id))
                 color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
                 cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-                cv2.putText(frame, f"Id {obj_id} | Conf: {score:.2f}", (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                cv2.putText(frame, f"Id {obj_id} | {class_name} | Conf: {score:.2f}",
+                            (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
             # Конвертация кадра для tkinter
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -95,14 +97,14 @@ class VideoProcessor:
 def load_mobile_models():
     # Корневая директория проекта
     project_root = Path(__file__).parent.resolve()
-    
+
     # Пути к файлам моделей
     model_paths = [
         project_root / "models" / "mobile_models" / "fox.pt",
         project_root / "models" / "mobile_models" / "people.pt",
         project_root / "models" / "mobile_models" / "rabbit.pt"
     ]
-    
+
     # Загружаем модели
     models = [YOLO(str(path)) for path in model_paths]
     for model in models:
