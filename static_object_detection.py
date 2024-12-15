@@ -4,6 +4,9 @@ import threading
 from PIL import Image, ImageTk
 from ultralytics import YOLO
 from pathlib import Path
+import logging
+
+logging.getLogger('ultralytics').setLevel(logging.WARNING)
 
 class ObjectDetectionProcessor:
     def __init__(self, models, labels, input_video_path, canvas, root):
