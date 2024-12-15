@@ -11,7 +11,7 @@ class VideoApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Видеообработка")
-        self.root.geometry("500x600")
+        self.root.geometry("990x450")
 
         # Темный фон для окна
         self.root.config(bg="#2E2E2E")
@@ -23,7 +23,7 @@ class VideoApp:
         self.right_frame.pack(side=tk.RIGHT, fill=tk.Y)
 
         # Кнопки управления
-        button_width = 20
+        button_width = 40
         button_height = 2
 
         self.mobile_button = tk.Button(
@@ -64,7 +64,7 @@ class VideoApp:
     def create_palette(self):
         """Создает палитру цветов с названиями классов."""
         tk.Label(
-            self.right_frame, text="Палитра классов", font=("Arial", 16), bg="#2E2E2E", fg="white"
+            self.right_frame, text="Палитра классов для рельефа и типа поверхности", font=("Arial", 16), bg="#2E2E2E", fg="white"
         ).pack(pady=10)
 
         for color, label in self.class_map.items():
