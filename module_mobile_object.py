@@ -46,6 +46,7 @@ class VideoProcessor:
         self.show_video = show_video
         self.save_video = save_video
         self.previous_positions = {}
+        self.previous_timestamps = {}
 
     def process_video(self, input_video_path, canvas, root):
         cap = cv2.VideoCapture(input_video_path)
@@ -53,6 +54,8 @@ class VideoProcessor:
             raise Exception("Error: Could not open video file.")
 
         prev_frame_shape = None
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_time = 1 / fps  # Время одного кадра
 
         while True:
             ret, frame = cap.read()
@@ -79,7 +82,6 @@ class VideoProcessor:
                         class_name = model.names[class_id]
                         all_detections.append([x1, y1, x2, y2, score, obj_id, class_name])
 
-
             merged_detections = self.merger.merge_detections(all_detections)
 
             for detection in merged_detections:
@@ -87,9 +89,25 @@ class VideoProcessor:
                 random.seed(int(obj_id))
                 color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
                 cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-                cv2.putText(frame, f"Id {obj_id} | {class_name} | Conf: {score:.2f}",
+
+                # Вычисление центра объекта
+                center_x, center_y = (x1 + x2) // 2, (y1 + y2) // 2
+
+                # Вычисление скорости
+                if obj_id in self.previous_positions:
+                    prev_x, prev_y = self.previous_positions[obj_id]
+                    distance = ((center_x - prev_x) ** 2 + (center_y - prev_y) ** 2) ** 0.5
+                    speed = distance / frame_time
+                else:
+                    speed = 0.0
+
+                # Обновление позиции объекта
+                self.previous_positions[obj_id] = (center_x, center_y)
+
+                # Отображение информации
+                cv2.putText(frame, f"Id {obj_id} | {class_name} | Speed: {speed:.2f} px/s",
                             (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-                
+
             # Конвертация кадра для tkinter
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame = cv2.resize(frame, (800, 600))
@@ -101,6 +119,7 @@ class VideoProcessor:
                 break
 
         cap.release()
+
 
 def load_mobile_models():
     # Корневая директория проекта
